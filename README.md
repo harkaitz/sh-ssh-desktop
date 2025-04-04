@@ -9,8 +9,7 @@ ssh-h-desktop
 
     Usage: ssh-h-desktop { -V | [-r (raw)] SSH }
     
-    Open a desktop in a remote machine using TigerVNC throw an SSH
-    tunnel or raw connection.
+    Open a desktop in a remote machine using TigerVNC.
     
     Env: DESKTOP_VNCPASS
     Config: ~/.dsetup.cfg, /etc/X11/dsetup.cfg
