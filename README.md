@@ -5,30 +5,33 @@ Access remote desktops using SSH.
 
 ## Help
 
-ssh-h-desktop
+ssh-h-tigervnc
 
-    Usage: ssh-h-desktop { -V | [-r (raw)] SSH }
+    Usage: ssh-h-tigervnc [-s][-W][-w PASS][-d DISPLAY] USER@HOST
     
-    Open a desktop in a remote machine using TigerVNC.
+    Connect to a machine using ssh(1) and tunnel a VNC session.
     
-    Env: DESKTOP_VNCPASS
-    Config: ~/.dsetup.cfg, /etc/X11/dsetup.cfg
-
-xinit-su
-
-    Usage: xinit-su { -V | COMMAND... }
+      -V          Show configuration.
+      -M          Multimonitor.
     
-    Launch Xorg as root and then using sudo/doas change to user, set
-    the wallpaper and configure screens with xrandr.
+      -s          Launch vncserver in the remote host.
+      -W          Set random password in the remote host.
+      -w PASS     Get password with "pass PASS".
+      -d DISPLAY  Redirect this display, default (1)
+      -b ADDRESS  The remote address with VNC server (127.0.0.1)
+      -c          Check connection and quit.
+      -k          Shutdown server and quit.
+      -X PROGRAM  Launch this program.
+      -K PATTERN  Kill this programs when launching a server to log out
+                  any user.
     
-    Environment variables: SUDO_{R,U},DESKTOP_{XSETROOT,XRANDR}
-    Config files: ~/.dsetup.cfg, /etc/X11/dsetup.cfg
-    Log files: ~/.desktop.log
+    Environment variables: SSH PASS VNC_MONITOR
 
 ## Collaborating
 
-For making bug reports, feature requests, support or consulting visit
-one of the following links:
+Feel free to open bug reports and feature/pull requests.
 
-1. [gemini://harkadev.com/oss/](gemini://harkadev.com/oss/)
-2. [https://harkadev.com/oss/](https://harkadev.com/oss/)
+More software like this here:
+
+1. [https://harkadev.com/prj/](https://harkadev.com/prj/)
+2. [https://devreal.org](https://devreal.org)

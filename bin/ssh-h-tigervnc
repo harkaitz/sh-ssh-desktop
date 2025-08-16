@@ -1,0 +1,139 @@
+#!/bin/sh -e
+##:
+#h: Usage: ssh-h-tigervnc [-s][-W][-w PASS][-d DISPLAY] USER@HOST
+#h:
+#h: Connect to a machine using ssh(1) and tunnel a VNC session.
+#h:
+#h:   -V          Show configuration.
+#h:   -M          Multimonitor.
+#h:
+#h:   -s          Launch vncserver in the remote host.
+#h:   -W          Set random password in the remote host.
+#h:   -w PASS     Get password with "pass PASS".
+#h:   -d DISPLAY  Redirect this display, default (1)
+#h:   -b ADDRESS  The remote address with VNC server (127.0.0.1)
+#h:   -c          Check connection and quit.
+#h:   -k          Shutdown server and quit.
+#h:   -X PROGRAM  Launch this program.
+#h:   -K PATTERN  Kill this programs when launching a server to log out
+#h:               any user.
+#h:
+#h: Environment variables: SSH PASS VNC_MONITOR
+##:
+ssh_h_tigervnc() {
+    local OPTIND=1 optopt opt_s= opt_W= opt_w= opt_d='1' opt_c=
+    local password= cmd_cli= cmd_srv= port raddr=127.0.0.1
+    local opt_M= opt_k= opt_X= opt_K=''
+    
+    # Parse command line arguments.
+    while getopts "sWw:d:b:cMkX:K:" optopt; do
+        case $optopt in
+            s)  opt_s=y;;
+            W)  opt_W=y;;
+            w)  opt_w="${OPTARG}";;
+            d)  opt_d="${OPTARG}";;
+            c)  opt_c=y;;
+            b)  raddr="${OPTARG}";;
+            M)  opt_M=y;;
+            k)  opt_k=y;;
+            X)  opt_X="${OPTARG}";;
+            K)  opt_K="${OPTARG}";;
+            \?) return 1;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+    if test ! -n "$1"; then
+        echo "error: Please specify a machine to connect to." >&2
+        return 1
+    fi
+
+    # Check connection.
+    if test -n "${opt_c}"; then
+        if ${SSH} "$1" "true"; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+    if test -n "${opt_k}"; then
+        ${SSH} "$1" 'pkill vncserver'
+        return 0
+    fi
+    
+    # Get port.
+    port="$(( 5900 + opt_d ))"
+    test -n "${port}"
+    
+    # Get password.
+    if test -n "${opt_w}"; then
+        password="$(${PASS} "${opt_w}")"
+        test -n "${password}"
+    elif test -n "${opt_W}"; then
+        password="$(openssl rand -base64 8 | cut -c1-8)"
+        test -n "${password}"
+    fi
+
+    # Client command.
+    cmd_cli="vncviewer -QualityLevel 0 -CompressLevel 0 -LowColourLevel 2 -FullScreen"
+    if test -n "${opt_M}"; then
+        cmd_cli="${cmd_cli} -FullScreenMode all"
+    else
+        cmd_cli="${cmd_cli} -FullScreenMode Selected -FullScreenSelectedMonitors ${VNC_MONITOR:-1}"
+    fi
+    cmd_cli="${cmd_cli} 127.0.0.1:3 >&2"
+
+    # Server command
+    if test -n "${opt_W}"; then
+        cmd_srv="${cmd_srv}
+        vncpasswd <<-EOF >/dev/null
+	${password}
+	${password}
+	n
+	EOF
+        "
+    fi
+    if test -n "${opt_s}"; then
+        cmd_srv="${cmd_srv}
+        if test ! -n \"\$(ps -A | grep '[v]ncserver')\"; then
+            for p in ${opt_K}; do
+                pkill \"\$p\" || true
+            done
+            vncserver ${opt_X:+ -xstartup '${opt_X}' } ':${opt_d}'
+        fi
+        "
+    fi
+    cmd_srv="${cmd_srv}
+    read ign
+    "
+
+    # Execute in parallel.
+    env ${password:+ VNC_PASSWORD="${password}" } sh -c "
+        sleep 2 >&2
+        ${cmd_cli}
+    " | ${SSH} -L 5903:"${raddr}":"${port}" "$1" "
+        ${cmd_srv}
+    "
+
+    #
+    return 0
+    
+}
+ssh_h_tigervnc_show_variables() {
+    cat <<-EOF
+	SSH  : ${SSH}
+	PASS : ${PASS}
+	EOF
+}
+ssh_h_tigervnc_calc_variables() {
+    SSH="${SSH:-ssh -o PasswordAuthentication=no -o BatchMode=yes -o ConnectTimeout=2}"
+    PASS="${PASS:-pass}"
+}
+# --------------------------------------------------------------------
+ssh_h_tigervnc_calc_variables
+if test @"${SCRNAME:-$(basename "$0")}" = @"ssh-h-tigervnc"; then
+    case "${1}" in
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        -V)  ssh_h_tigervnc_show_variables; exit 0;;
+        *)   ssh_h_tigervnc "$@"; exit 0;;
+    esac
+fi
